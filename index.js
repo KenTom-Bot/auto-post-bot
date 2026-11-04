@@ -5,7 +5,7 @@ const FormData = require('form-data');
 const path = require('path');
 
 // ================= 1. CẤU HÌNH CƠ BẢN =================
-const SPREADSHEET_ID = 'ĐIỀN_ID_BẢNG_TÍNH_VÀO_ĐÂY';
+const SPREADSHEET_ID = '1wr6WHUF3i8U0b-BVv0AVw5JjfT9ojOwtzqf41tVdjrw';
 const SHEET_NAME = 'Trang tính1'; 
 
 // ================= 2. TỪ ĐIỂN TÀI KHOẢN =================
@@ -14,6 +14,17 @@ const ACCOUNTS = {
         type: 'FACEBOOK', 
         id: '510347025492019', 
         token: 'EAAQygEX3PaQBS93jZBW1vZB12TG79fQBcap3UkXZBPUqaDbFyDZBPl9ekhPyIzlpsIZC9gt7BFkGJz6rtK31s4vPdpGogOUiseKEWSGY7iKKAPPSEhDEynYMNQ3ZA3jHERv5E2ZBVDDZCy3SYgKx3NZBV1ZCZAm2x3aCAqQlgdqRegFmGU7GBBlrs0ZCzQQZCyfYFG8vLxj39PDVgJ6FlixcZBS3LXbTcD1SZCz0Ox3Wggz0dyx5tXbSpTYbvagkmTD' 
+    },
+    'FB - Thế Giới Trẻ Thơ': { 
+        type: 'FACEBOOK', 
+        id: '108894505424425', 
+        token: 'EAAQygEX3PaQBSxCoZCFn89zw10Xd7kzcSVpOERmhr2ZC5uQ3El77HmEyUfZBDuosmF4E5XhSpCpA9pAGh5wJuD9jxCcTcxZAme1kICzZAAt9mcpGZBROTgg2VvLlt3ZChXIl5satZAgdRi5RPkRBj6Jq1tsrKzfjpV6fktjg9ZC6G6KlGQVl5QG7VXxdgVse1ZA8T0CrKI8CfiGLZBLgO77ZCBRrea3TsXyuZCw3oxDbY8jPE1xZApuemUUfpcX8aSsdoZD' 
+    },
+    'YT - Cafe Số': { 
+        type: 'YOUTUBE', 
+        clientId: '5800787278-1kvg105bh2g15vred661h93imrh4kiuq.apps.googleusercontent.com', 
+        clientSecret: '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', 
+        refreshToken: '1//04sAqFrzPe8WUCgYIARAAGAQSNwF-L9IrfmzZWCamCa6aNT3QAW-gvfCUrPohxEpobCnwBf9qBtqOQI_jozQeiZCbKLHKlLKLDpo' 
     },
     'YT - Kênh Chính': { 
         type: 'YOUTUBE', 
