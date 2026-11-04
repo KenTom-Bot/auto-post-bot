@@ -30,7 +30,7 @@ const ACCOUNTS = {
         type: 'YOUTUBE', 
         clientId: '5800787278-1kvg105bh2g15vred661h93imrh4kiuq.apps.googleusercontent.com', 
         clientSecret: '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', 
-        refreshToken: '1//04eFcdGCwRUsSCgYIARAAGAQSNwF-L9Ir5wLTJggMPC5p6wc2BeVkn7MgIhEeljo-09bQj8Uawy_-HKncJxnQ84eabtESE2ZPVEk' 
+        refreshToken: '1//04smmHfBWciMzCgYIARAAGAQSNwF-L9IrovhmWEJfFJToARGw0ISTwUo2ZMaeXkalmCtKFkHYVLFH8LxM0BKpIHL3nv5cxaAkdCk' 
     }
 };
 
