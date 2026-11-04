@@ -5,9 +5,9 @@ const FormData = require('form-data');
 const path = require('path');
 
 // ================= CẤU HÌNH CƠ BẢN =================
-const SPREADSHEET_ID = 'ĐIỀN_ID_BẢNG_TÍNH_CỦA_BẠN_VÀO_ĐÂY';
-const FB_PAGE_ID = 'ĐIỀN_ID_FANPAGE_VÀO_ĐÂY'; 
-const FB_PAGE_TOKEN = 'ĐIỀN_MÃ_PAGE_TOKEN_CHUẨN_VÀO_ĐÂY';
+const SPREADSHEET_ID = '1wr6WHUF3i8U0b-BVv0AVw5JjfT9ojOwtzqf41tVdjrw';
+const FB_PAGE_ID = '510347025492019'; 
+const FB_PAGE_TOKEN = 'EAAQygEX3PaQBS93jZBW1vZB12TG79fQBcap3UkXZBPUqaDbFyDZBPl9ekhPyIzlpsIZC9gt7BFkGJz6rtK31s4vPdpGogOUiseKEWSGY7iKKAPPSEhDEynYMNQ3ZA3jHERv5E2ZBVDDZCy3SYgKx3NZBV1ZCZAm2x3aCAqQlgdqRegFmGU7GBBlrs0ZCzQQZCyfYFG8vLxj39PDVgJ6FlixcZBS3LXbTcD1SZCz0Ox3Wggz0dyx5tXbSpTYbvagkmTD';
 const SHEET_NAME = 'Trang tính1'; 
 
 const auth = new google.auth.GoogleAuth({
