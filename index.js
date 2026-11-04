@@ -156,7 +156,7 @@ async function downloadFileDrive(driveLink, destPath) {
     if (!fileIdMatch) throw new Error('Link Drive không hợp lệ');
     const directUrl = `https://drive.google.com/uc?export=download&id=${fileIdMatch[0]}`;
     const writer = fs.createWriteStream(destPath);
-    const response = await axios({ url: directUrl, method: 'GET', responseType: 'stream' });
+    const response = await axios({ url: directUrl, method: 'GET', responseType: 'stream', timeout: 30000 });
     response.data.pipe(writer);
     return new Promise((resolve, reject) => {
         writer.on('finish', resolve);
