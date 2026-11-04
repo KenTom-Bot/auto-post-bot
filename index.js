@@ -82,8 +82,10 @@ async function kiemTraVaDangBai() {
                         
                         // ===== XỬ LÝ FACEBOOK =====
                         if (accountConfig.type === 'FACEBOOK') {
+                            let postId = null; // Khởi tạo biến đón ID bài viết
+
                             if (loaiBai === 'Text') {
-                                await dangBaiTextFacebook(finalCaption, accountConfig.id, accountConfig.token);
+                                postId = await dangBaiTextFacebook(finalCaption, accountConfig.id, accountConfig.token);
                             } else {
                                 if (arrLinks.length === 0) throw new Error('Không có link Drive');
                                 if (loaiBai === 'Video' || arrLinks.length === 1) {
@@ -91,8 +93,8 @@ async function kiemTraVaDangBai() {
                                     const tempFilePath = path.join(__dirname, `temp_${Date.now()}${ext}`);
                                     await downloadFileDrive(arrLinks[0], tempFilePath);
                                     
-                                    if (loaiBai === 'Image') await dangBaiImageFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
-                                    else await dangBaiVideoFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
+                                    if (loaiBai === 'Image') postId = await dangBaiImageFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
+                                    else postId = await dangBaiVideoFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
                                     
                                     fs.unlinkSync(tempFilePath);
                                 } else if (loaiBai === 'Image' && arrLinks.length > 1) {
@@ -105,9 +107,19 @@ async function kiemTraVaDangBai() {
                                         const photoId = await dangAnhAnFacebook(tempFilePath, accountConfig.id, accountConfig.token);
                                         mediaIds.push(photoId);
                                     }
-                                    await dangNhieuAnhFacebook(finalCaption, mediaIds, accountConfig.id, accountConfig.token);
+                                    postId = await dangNhieuAnhFacebook(finalCaption, mediaIds, accountConfig.id, accountConfig.token);
                                     downloadedFiles.forEach(file => fs.unlinkSync(file));
                                 }
+                            }
+
+                            // --- AUTO COMMENT CHO FACEBOOK ---
+                            if (postId && linkAffiliate) {
+                                const commentText = `👉 Xem và đặt mua sản phẩm tại đây nhé: ${linkAffiliate}`;
+                                await axios.post(`https://graph.facebook.com/v18.0/${postId}/comments`, {
+                                    message: commentText,
+                                    access_token: accountConfig.token
+                                });
+                                console.log(`💬 Đã tự động thả comment FB: ${postId}`);
                             }
                         } 
                         // ===== XỬ LÝ YOUTUBE =====
@@ -120,7 +132,7 @@ async function kiemTraVaDangBai() {
                             oauth2Client.setCredentials({ refresh_token: accountConfig.refreshToken });
                             const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
                             
-                            await youtube.videos.insert({
+                            const uploadResponse = await youtube.videos.insert({
                                 part: 'snippet,status',
                                 requestBody: {
                                     snippet: { title: tieuDe || 'Video', description: finalCaption },
@@ -128,7 +140,24 @@ async function kiemTraVaDangBai() {
                                 },
                                 media: { body: fs.createReadStream(tempFilePath) }
                             });
+                            
                             fs.unlinkSync(tempFilePath);
+                            const videoId = uploadResponse.data.id;
+
+                            // --- AUTO COMMENT CHO YOUTUBE ---
+                            if (videoId && linkAffiliate) {
+                                const commentText = `👉 Xem và đặt mua sản phẩm tại đây nhé: ${linkAffiliate}`;
+                                await youtube.commentThreads.insert({
+                                    part: 'snippet',
+                                    requestBody: {
+                                        snippet: {
+                                            videoId: videoId,
+                                            topLevelComment: { snippet: { textOriginal: commentText } }
+                                        }
+                                    }
+                                });
+                                console.log(`💬 Đã tự động thả comment YT: ${videoId}`);
+                            }
                         }
 
                         // Cập nhật Sheets
@@ -150,7 +179,7 @@ async function kiemTraVaDangBai() {
     }
 }
 
-// ===== CÁC HÀM TIỆN ÍCH =====
+// ===== CÁC HÀM TIỆN ÍCH TÙY CHỈNH ĐỂ TRẢ VỀ ID =====
 async function downloadFileDrive(driveLink, destPath) {
     const fileIdMatch = driveLink.match(/[-\w]{25,}/);
     if (!fileIdMatch) throw new Error('Link Drive không hợp lệ');
@@ -164,24 +193,29 @@ async function downloadFileDrive(driveLink, destPath) {
     });
 }
 async function dangBaiTextFacebook(message, pageId, pageToken) {
-    await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params: { message, access_token: pageToken }});
+    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params: { message, access_token: pageToken }});
+    return res.data.id;
 }
 async function dangBaiImageFacebook(message, filePath, pageId, pageToken) {
     const form = new FormData(); form.append('message', message); form.append('access_token', pageToken); form.append('source', fs.createReadStream(filePath));
-    await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() });
+    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() });
+    return res.data.id;
 }
 async function dangBaiVideoFacebook(message, filePath, pageId, pageToken) {
     const form = new FormData(); form.append('description', message); form.append('access_token', pageToken); form.append('source', fs.createReadStream(filePath));
-    await axios.post(`https://graph.facebook.com/v18.0/${pageId}/videos`, form, { headers: form.getHeaders() });
+    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/videos`, form, { headers: form.getHeaders() });
+    return res.data.id;
 }
 async function dangAnhAnFacebook(filePath, pageId, pageToken) {
     const form = new FormData(); form.append('published', 'false'); form.append('access_token', pageToken); form.append('source', fs.createReadStream(filePath));
-    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() }); return res.data.id;
+    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() }); 
+    return res.data.id;
 }
 async function dangNhieuAnhFacebook(message, mediaIds, pageId, pageToken) {
     const params = { message, access_token: pageToken };
     mediaIds.forEach((id, index) => { params[`attached_media[${index}]`] = JSON.stringify({ media_fbid: id }); });
-    await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params });
+    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params });
+    return res.data.id;
 }
 
 kiemTraVaDangBai();
