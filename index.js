@@ -12,8 +12,8 @@ const SHEET_NAME = 'Trang tính1';
 const ACCOUNTS = {
     'FB - Cafe Số': { 
         type: 'FACEBOOK', 
-        id: 'ĐIỀN_PAGE_ID', 
-        token: 'ĐIỀN_PAGE_TOKEN' 
+        id: '510347025492019', 
+        token: 'EAAQygEX3PaQBS93jZBW1vZB12TG79fQBcap3UkXZBPUqaDbFyDZBPl9ekhPyIzlpsIZC9gt7BFkGJz6rtK31s4vPdpGogOUiseKEWSGY7iKKAPPSEhDEynYMNQ3ZA3jHERv5E2ZBVDDZCy3SYgKx3NZBV1ZCZAm2x3aCAqQlgdqRegFmGU7GBBlrs0ZCzQQZCyfYFG8vLxj39PDVgJ6FlixcZBS3LXbTcD1SZCz0Ox3Wggz0dyx5tXbSpTYbvagkmTD' 
     },
     'YT - Kênh Chính': { 
         type: 'YOUTUBE', 
