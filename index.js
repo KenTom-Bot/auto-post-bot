@@ -41,11 +41,15 @@ const auth = new google.auth.GoogleAuth({
 
 function parseDateStringVN(dateStr) {
     if (!dateStr) return null;
-    const parts = dateStr.trim().split(' ');
-    if (parts.length !== 2) return null;
-    const [day, month, year] = parts[0].split('/');
-    const time = parts[1];
-    return new Date(`${year}-${month}-${day}T${time}:00+07:00`);
+    try {
+        const parts = dateStr.trim().split(' ');
+        if (parts.length < 2) return null; // Sửa lỗi nếu thiếu khoảng trắng
+        const [day, month, year] = parts[0].split('/');
+        const time = parts[1].slice(0, 5); // Cắt lấy chính xác HH:MM, loại bỏ số giây nếu vô tình bị thêm vào
+        return new Date(`${year}-${month}-${day}T${time}:00+07:00`);
+    } catch (e) {
+        return null;
+    }
 }
 
 async function kiemTraVaDangBai() {
@@ -61,43 +65,56 @@ async function kiemTraVaDangBai() {
         });
 
         const rows = response.data.values;
-        if (!rows || rows.length === 0) return console.log('Không có dữ liệu.');
+        if (!rows || rows.length === 0) return console.log('⚠️ Không có dữ liệu bài viết nào trong bảng.');
 
         for (let i = 0; i < rows.length; i++) {
             const [thoiGian, loaiBai, nenTang, tieuDe, noiDung, linkDrive, linkAffiliate, trangThai] = rows[i] || [];
 
             if (!trangThai || !trangThai.includes('Đã đăng')) {
                 const scheduledTime = parseDateStringVN(thoiGian);
-                if (!scheduledTime || now < scheduledTime) continue; 
+                
+                // IN CẢNH BÁO NẾU THỜI GIAN LỖI HOẶC CHƯA TỚI GIỜ
+                if (!scheduledTime) {
+                    console.log(`⚠️ Lỗi định dạng thời gian ở bài: "${tieuDe || 'Không tên'}". Vui lòng kiểm tra lại file Sheets.`);
+                    continue;
+                }
+                if (now < scheduledTime) {
+                    console.log(`⏳ Chưa tới giờ đăng bài: "${tieuDe || 'Không tên'}" (Lịch hẹn: ${scheduledTime.toLocaleString('vi-VN')})`);
+                    continue; 
+                }
 
                 let finalCaption = noiDung || '';
                 if (linkAffiliate) finalCaption += `\n\n👉 Mua ngay: ${linkAffiliate}`;
 
                 const accountConfig = ACCOUNTS[nenTang ? nenTang.trim() : ''];
+                const loaiBaiChuan = loaiBai ? loaiBai.trim() : ''; // Loại bỏ dấu cách thừa
                 
                 if (accountConfig) {
                     try {
-                        console.log(`-> Đang xử lý ${loaiBai} cho ${nenTang}...`);
+                        console.log(`-> Đang xử lý [${loaiBaiChuan}] cho [${nenTang}]...`);
                         const arrLinks = linkDrive ? linkDrive.split(',').map(l => l.trim()).filter(l => l) : [];
                         
                         // ===== XỬ LÝ FACEBOOK =====
                         if (accountConfig.type === 'FACEBOOK') {
-                            let postId = null; // Khởi tạo biến đón ID bài viết
+                            let postId = null;
 
-                            if (loaiBai === 'Text') {
+                            if (loaiBaiChuan === 'Text') {
                                 postId = await dangBaiTextFacebook(finalCaption, accountConfig.id, accountConfig.token);
                             } else {
-                                if (arrLinks.length === 0) throw new Error('Không có link Drive');
-                                if (loaiBai === 'Video' || arrLinks.length === 1) {
-                                    const ext = loaiBai === 'Image' ? '.jpg' : '.mp4';
+                                if (arrLinks.length === 0) throw new Error('Không có link thư mục Drive');
+                                if (loaiBaiChuan === 'Video' || arrLinks.length === 1) {
+                                    const ext = loaiBaiChuan === 'Image' ? '.jpg' : '.mp4';
                                     const tempFilePath = path.join(__dirname, `temp_${Date.now()}${ext}`);
-                                    await downloadFileDrive(arrLinks[0], tempFilePath);
                                     
-                                    if (loaiBai === 'Image') postId = await dangBaiImageFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
+                                    console.log(`   ⏳ Đang tải file từ Drive xuống máy...`);
+                                    await downloadFileDrive(arrLinks[0], tempFilePath);
+                                    console.log(`   ✅ Tải file xong, đang đẩy lên Facebook...`);
+                                    
+                                    if (loaiBaiChuan === 'Image') postId = await dangBaiImageFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
                                     else postId = await dangBaiVideoFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
                                     
-                                    fs.unlinkSync(tempFilePath);
-                                } else if (loaiBai === 'Image' && arrLinks.length > 1) {
+                                    if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+                                } else if (loaiBaiChuan === 'Image' && arrLinks.length > 1) {
                                     const mediaIds = [];
                                     const downloadedFiles = [];
                                     for (let j = 0; j < arrLinks.length; j++) {
@@ -108,7 +125,7 @@ async function kiemTraVaDangBai() {
                                         mediaIds.push(photoId);
                                     }
                                     postId = await dangNhieuAnhFacebook(finalCaption, mediaIds, accountConfig.id, accountConfig.token);
-                                    downloadedFiles.forEach(file => fs.unlinkSync(file));
+                                    downloadedFiles.forEach(file => { if (fs.existsSync(file)) fs.unlinkSync(file); });
                                 }
                             }
 
@@ -123,16 +140,19 @@ async function kiemTraVaDangBai() {
                             }
                         } 
                         // ===== XỬ LÝ YOUTUBE =====
-                        else if (accountConfig.type === 'YOUTUBE' && loaiBai === 'Video') {
+                        else if (accountConfig.type === 'YOUTUBE' && loaiBaiChuan === 'Video') {
                             if (arrLinks.length === 0) throw new Error('Không có link Drive');
                             const tempFilePath = path.join(__dirname, `temp_yt_${Date.now()}.mp4`);
+                            
+                            console.log(`   ⏳ Đang tải Video từ Drive xuống máy...`);
                             await downloadFileDrive(arrLinks[0], tempFilePath);
                             
                             const oauth2Client = new google.auth.OAuth2(accountConfig.clientId, accountConfig.clientSecret);
                             oauth2Client.setCredentials({ refresh_token: accountConfig.refreshToken });
-                            const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+                            const youtubeApi = google.youtube({ version: 'v3', auth: oauth2Client });
                             
-                            const uploadResponse = await youtube.videos.insert({
+                            console.log(`   ✅ Tải Video xong, đang đẩy lên YouTube...`);
+                            const uploadResponse = await youtubeApi.videos.insert({
                                 part: 'snippet,status',
                                 requestBody: {
                                     snippet: { title: tieuDe || 'Video', description: finalCaption },
@@ -141,13 +161,13 @@ async function kiemTraVaDangBai() {
                                 media: { body: fs.createReadStream(tempFilePath) }
                             });
                             
-                            fs.unlinkSync(tempFilePath);
+                            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
                             const videoId = uploadResponse.data.id;
 
                             // --- AUTO COMMENT CHO YOUTUBE ---
                             if (videoId && linkAffiliate) {
                                 const commentText = `👉 Xem và đặt mua sản phẩm tại đây nhé: ${linkAffiliate}`;
-                                await youtube.commentThreads.insert({
+                                await youtubeApi.commentThreads.insert({
                                     part: 'snippet',
                                     requestBody: {
                                         snippet: {
@@ -169,20 +189,23 @@ async function kiemTraVaDangBai() {
                         });
                         console.log(`✅ Hoàn tất lên ${nenTang}`);
                     } catch (err) {
-                        console.error(`❌ Lỗi ${nenTang}:`, err.message);
+                        // SỬA LỖI HIỂN THỊ Ở ĐÂY ĐỂ BIẾT CHÍNH XÁC FB/YT ĐANG BÁO GÌ
+                        console.error(`❌ Lỗi hệ thống khi đăng lên ${nenTang}:`, JSON.stringify(err.response?.data || err.message, null, 2));
                     }
+                } else {
+                    console.log(`⚠️ Không tìm thấy cấu hình tài khoản cho: "${nenTang}". Kiểm tra lại tên ở cột Nền tảng.`);
                 }
             }
         }
     } catch (error) {
-        console.error('❌ Lỗi hệ thống:', error.message);
+        console.error('❌ Lỗi kết nối File Google Sheets:', error.message);
     }
 }
 
-// ===== CÁC HÀM TIỆN ÍCH TÙY CHỈNH ĐỂ TRẢ VỀ ID =====
+// ===== CÁC HÀM TIỆN ÍCH =====
 async function downloadFileDrive(driveLink, destPath) {
     const fileIdMatch = driveLink.match(/[-\w]{25,}/);
-    if (!fileIdMatch) throw new Error('Link Drive không hợp lệ');
+    if (!fileIdMatch) throw new Error('Link Drive không hợp lệ (Không tìm thấy ID)');
     const directUrl = `https://drive.google.com/uc?export=download&id=${fileIdMatch[0]}`;
     const writer = fs.createWriteStream(destPath);
     const response = await axios({ url: directUrl, method: 'GET', responseType: 'stream' });
@@ -199,7 +222,7 @@ async function dangBaiTextFacebook(message, pageId, pageToken) {
 async function dangBaiImageFacebook(message, filePath, pageId, pageToken) {
     const form = new FormData(); form.append('message', message); form.append('access_token', pageToken); form.append('source', fs.createReadStream(filePath));
     const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() });
-    return res.data.id;
+    return res.data.id; // API /photos có trả về biến id
 }
 async function dangBaiVideoFacebook(message, filePath, pageId, pageToken) {
     const form = new FormData(); form.append('description', message); form.append('access_token', pageToken); form.append('source', fs.createReadStream(filePath));
