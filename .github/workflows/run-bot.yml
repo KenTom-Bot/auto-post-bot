@@ -1,0 +1,28 @@
+name: Bot Tu Dong Dang Bai
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Lệnh chạy tự động mỗi 30 phút. 
+  workflow_dispatch: # Hiển thị nút bấm để bạn có thể test thủ công bất cứ lúc nào
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lấy mã nguồn về máy chủ GitHub
+        uses: actions/checkout@v3
+
+      - name: Cài đặt môi trường Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Cài đặt các thư viện cần thiết
+        run: npm install
+
+      - name: Tạo lại file chìa khóa Google từ két sắt
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: echo "$GOOGLE_CREDENTIALS" > credentials.json
+
+      - name: Kích hoạt Bot
+        run: node index.js
