@@ -13,12 +13,12 @@ const ACCOUNTS = {
     'FB - Cafe Số': { 
         type: 'FACEBOOK', 
         id: '510347025492019', 
-        token: 'EAAQygEX3PaQBS6ajRqUWVwm0ALxM1zvnOVPvFaDQtPySvW5yXNPNi5fdUhhXLqHSteoWPzG3aC6MxC6lrztagfOrGpCcjMZA6ZCZAcNAYP6WZBFf87JApbhIk0wQp6NvKychTrPQmAe47ww55ymKrJEDHiTw3qHIbeT5LQALQW2Tc6EMlc2F66yJodCIwJWoveoP4lcKLAKVfZBM8Hkd8pEEA' 
+        token: 'EAAQygEX3PaQBS1dgTAC5UDeNZClZAH3gAo7800gdwEDfAFe3DZA5CNVBAwBZCLhKucubH1xfx4ZCHddbT21dtVb3g6JbGzeJvXCjPy6MhelVD4nSHRJ1uuuc62eF7aytKDRltoZCmryoXn7fUgkA6c6uHXyevOtWF4PDjIZA3ota81AeZCkWdgvg38XvpN5QJRDAmOqMdiYxxJeOWTm63Jwd' 
     },
     'FB - Thế Giới Trẻ Thơ': { 
         type: 'FACEBOOK', 
         id: '108894505424425', 
-        token: 'EAAQygEX3PaQBS5fcZAs4CdVj0fgtH9GRD2ZArVVIDn4h34fe8rOxbxyP2EBJaiAattnBhFhCQEkAgAXV0py4RvADhTZBghcRWMwygjCAWYsRhrckZBExyKCF4dbFZBzRPLsmmRwaZAk3vupl69kk92ie9BZABLg8RrSk6Mz5bLEcZCFD4L5hY3GT5cuNMNZCZCU0iQZC8uNbMuFlR09KnfGhzOqZAAEZD' 
+        token: 'EAAQygEX3PaQBSZBeeDjHymx7Ju37LPLslzzWbLhnJueL2MXr1ZAl33TAHZBMgEYdmLErTHraZCFcZCJYtZApCXtJGk0EflgpDiCPqapaqgsDdfCNOzDodpLVddm88xqKK8yEfXPkAZCsxR04TBjt9acDDX5K5s27Rrn1K4CHno1ZAf17QewDiJqKdSZAvMyIUR85ykDTSkYmyyNjZAFQekQ4IdJIswplHudmaEZA4HVO1HdlBH2KLtnEkfFFdXF8NEZD' 
     },
     'YT - Cafe Số': { 
         type: 'YOUTUBE', 
@@ -41,15 +41,11 @@ const auth = new google.auth.GoogleAuth({
 
 function parseDateStringVN(dateStr) {
     if (!dateStr) return null;
-    try {
-        const parts = dateStr.trim().split(' ');
-        if (parts.length < 2) return null; // Sửa lỗi nếu thiếu khoảng trắng
-        const [day, month, year] = parts[0].split('/');
-        const time = parts[1].slice(0, 5); // Cắt lấy chính xác HH:MM, loại bỏ số giây nếu vô tình bị thêm vào
-        return new Date(`${year}-${month}-${day}T${time}:00+07:00`);
-    } catch (e) {
-        return null;
-    }
+    const parts = dateStr.trim().split(' ');
+    if (parts.length !== 2) return null;
+    const [day, month, year] = parts[0].split('/');
+    const time = parts[1];
+    return new Date(`${year}-${month}-${day}T${time}:00+07:00`);
 }
 
 async function kiemTraVaDangBai() {
@@ -65,56 +61,41 @@ async function kiemTraVaDangBai() {
         });
 
         const rows = response.data.values;
-        if (!rows || rows.length === 0) return console.log('⚠️ Không có dữ liệu bài viết nào trong bảng.');
+        if (!rows || rows.length === 0) return console.log('Không có dữ liệu.');
 
         for (let i = 0; i < rows.length; i++) {
             const [thoiGian, loaiBai, nenTang, tieuDe, noiDung, linkDrive, linkAffiliate, trangThai] = rows[i] || [];
 
             if (!trangThai || !trangThai.includes('Đã đăng')) {
                 const scheduledTime = parseDateStringVN(thoiGian);
-                
-                // IN CẢNH BÁO NẾU THỜI GIAN LỖI HOẶC CHƯA TỚI GIỜ
-                if (!scheduledTime) {
-                    console.log(`⚠️ Lỗi định dạng thời gian ở bài: "${tieuDe || 'Không tên'}". Vui lòng kiểm tra lại file Sheets.`);
-                    continue;
-                }
-                if (now < scheduledTime) {
-                    console.log(`⏳ Chưa tới giờ đăng bài: "${tieuDe || 'Không tên'}" (Lịch hẹn: ${scheduledTime.toLocaleString('vi-VN')})`);
-                    continue; 
-                }
+                if (!scheduledTime || now < scheduledTime) continue; 
 
                 let finalCaption = noiDung || '';
                 if (linkAffiliate) finalCaption += `\n\n👉 Mua ngay: ${linkAffiliate}`;
 
                 const accountConfig = ACCOUNTS[nenTang ? nenTang.trim() : ''];
-                const loaiBaiChuan = loaiBai ? loaiBai.trim() : ''; // Loại bỏ dấu cách thừa
                 
                 if (accountConfig) {
                     try {
-                        console.log(`-> Đang xử lý [${loaiBaiChuan}] cho [${nenTang}]...`);
+                        console.log(`-> Đang xử lý ${loaiBai} cho ${nenTang}...`);
                         const arrLinks = linkDrive ? linkDrive.split(',').map(l => l.trim()).filter(l => l) : [];
                         
                         // ===== XỬ LÝ FACEBOOK =====
                         if (accountConfig.type === 'FACEBOOK') {
-                            let postId = null;
-
-                            if (loaiBaiChuan === 'Text') {
-                                postId = await dangBaiTextFacebook(finalCaption, accountConfig.id, accountConfig.token);
+                            if (loaiBai === 'Text') {
+                                await dangBaiTextFacebook(finalCaption, accountConfig.id, accountConfig.token);
                             } else {
-                                if (arrLinks.length === 0) throw new Error('Không có link thư mục Drive');
-                                if (loaiBaiChuan === 'Video' || arrLinks.length === 1) {
-                                    const ext = loaiBaiChuan === 'Image' ? '.jpg' : '.mp4';
+                                if (arrLinks.length === 0) throw new Error('Không có link Drive');
+                                if (loaiBai === 'Video' || arrLinks.length === 1) {
+                                    const ext = loaiBai === 'Image' ? '.jpg' : '.mp4';
                                     const tempFilePath = path.join(__dirname, `temp_${Date.now()}${ext}`);
-                                    
-                                    console.log(`   ⏳ Đang tải file từ Drive xuống máy...`);
                                     await downloadFileDrive(arrLinks[0], tempFilePath);
-                                    console.log(`   ✅ Tải file xong, đang đẩy lên Facebook...`);
                                     
-                                    if (loaiBaiChuan === 'Image') postId = await dangBaiImageFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
-                                    else postId = await dangBaiVideoFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
+                                    if (loaiBai === 'Image') await dangBaiImageFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
+                                    else await dangBaiVideoFacebook(finalCaption, tempFilePath, accountConfig.id, accountConfig.token);
                                     
-                                    if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-                                } else if (loaiBaiChuan === 'Image' && arrLinks.length > 1) {
+                                    fs.unlinkSync(tempFilePath);
+                                } else if (loaiBai === 'Image' && arrLinks.length > 1) {
                                     const mediaIds = [];
                                     const downloadedFiles = [];
                                     for (let j = 0; j < arrLinks.length; j++) {
@@ -124,35 +105,22 @@ async function kiemTraVaDangBai() {
                                         const photoId = await dangAnhAnFacebook(tempFilePath, accountConfig.id, accountConfig.token);
                                         mediaIds.push(photoId);
                                     }
-                                    postId = await dangNhieuAnhFacebook(finalCaption, mediaIds, accountConfig.id, accountConfig.token);
-                                    downloadedFiles.forEach(file => { if (fs.existsSync(file)) fs.unlinkSync(file); });
+                                    await dangNhieuAnhFacebook(finalCaption, mediaIds, accountConfig.id, accountConfig.token);
+                                    downloadedFiles.forEach(file => fs.unlinkSync(file));
                                 }
-                            }
-
-                            // --- AUTO COMMENT CHO FACEBOOK ---
-                            if (postId && linkAffiliate) {
-                                const commentText = `👉 Xem và đặt mua sản phẩm tại đây nhé: ${linkAffiliate}`;
-                                await axios.post(`https://graph.facebook.com/v18.0/${postId}/comments`, {
-                                    message: commentText,
-                                    access_token: accountConfig.token
-                                });
-                                console.log(`💬 Đã tự động thả comment FB: ${postId}`);
                             }
                         } 
                         // ===== XỬ LÝ YOUTUBE =====
-                        else if (accountConfig.type === 'YOUTUBE' && loaiBaiChuan === 'Video') {
+                        else if (accountConfig.type === 'YOUTUBE' && loaiBai === 'Video') {
                             if (arrLinks.length === 0) throw new Error('Không có link Drive');
                             const tempFilePath = path.join(__dirname, `temp_yt_${Date.now()}.mp4`);
-                            
-                            console.log(`   ⏳ Đang tải Video từ Drive xuống máy...`);
                             await downloadFileDrive(arrLinks[0], tempFilePath);
                             
                             const oauth2Client = new google.auth.OAuth2(accountConfig.clientId, accountConfig.clientSecret);
                             oauth2Client.setCredentials({ refresh_token: accountConfig.refreshToken });
-                            const youtubeApi = google.youtube({ version: 'v3', auth: oauth2Client });
+                            const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
                             
-                            console.log(`   ✅ Tải Video xong, đang đẩy lên YouTube...`);
-                            const uploadResponse = await youtubeApi.videos.insert({
+                            await youtube.videos.insert({
                                 part: 'snippet,status',
                                 requestBody: {
                                     snippet: { title: tieuDe || 'Video', description: finalCaption },
@@ -160,24 +128,7 @@ async function kiemTraVaDangBai() {
                                 },
                                 media: { body: fs.createReadStream(tempFilePath) }
                             });
-                            
-                            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-                            const videoId = uploadResponse.data.id;
-
-                            // --- AUTO COMMENT CHO YOUTUBE ---
-                            if (videoId && linkAffiliate) {
-                                const commentText = `👉 Xem và đặt mua sản phẩm tại đây nhé: ${linkAffiliate}`;
-                                await youtubeApi.commentThreads.insert({
-                                    part: 'snippet',
-                                    requestBody: {
-                                        snippet: {
-                                            videoId: videoId,
-                                            topLevelComment: { snippet: { textOriginal: commentText } }
-                                        }
-                                    }
-                                });
-                                console.log(`💬 Đã tự động thả comment YT: ${videoId}`);
-                            }
+                            fs.unlinkSync(tempFilePath);
                         }
 
                         // Cập nhật Sheets
@@ -189,23 +140,20 @@ async function kiemTraVaDangBai() {
                         });
                         console.log(`✅ Hoàn tất lên ${nenTang}`);
                     } catch (err) {
-                        // SỬA LỖI HIỂN THỊ Ở ĐÂY ĐỂ BIẾT CHÍNH XÁC FB/YT ĐANG BÁO GÌ
-                        console.error(`❌ Lỗi hệ thống khi đăng lên ${nenTang}:`, JSON.stringify(err.response?.data || err.message, null, 2));
+                        console.error(`❌ Lỗi ${nenTang}:`, err.message);
                     }
-                } else {
-                    console.log(`⚠️ Không tìm thấy cấu hình tài khoản cho: "${nenTang}". Kiểm tra lại tên ở cột Nền tảng.`);
                 }
             }
         }
     } catch (error) {
-        console.error('❌ Lỗi kết nối File Google Sheets:', error.message);
+        console.error('❌ Lỗi hệ thống:', error.message);
     }
 }
 
 // ===== CÁC HÀM TIỆN ÍCH =====
 async function downloadFileDrive(driveLink, destPath) {
     const fileIdMatch = driveLink.match(/[-\w]{25,}/);
-    if (!fileIdMatch) throw new Error('Link Drive không hợp lệ (Không tìm thấy ID)');
+    if (!fileIdMatch) throw new Error('Link Drive không hợp lệ');
     const directUrl = `https://drive.google.com/uc?export=download&id=${fileIdMatch[0]}`;
     const writer = fs.createWriteStream(destPath);
     const response = await axios({ url: directUrl, method: 'GET', responseType: 'stream' });
@@ -216,29 +164,24 @@ async function downloadFileDrive(driveLink, destPath) {
     });
 }
 async function dangBaiTextFacebook(message, pageId, pageToken) {
-    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params: { message, access_token: pageToken }});
-    return res.data.id;
+    await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params: { message, access_token: pageToken }});
 }
 async function dangBaiImageFacebook(message, filePath, pageId, pageToken) {
     const form = new FormData(); form.append('message', message); form.append('access_token', pageToken); form.append('source', fs.createReadStream(filePath));
-    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() });
-    return res.data.id; // API /photos có trả về biến id
+    await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() });
 }
 async function dangBaiVideoFacebook(message, filePath, pageId, pageToken) {
     const form = new FormData(); form.append('description', message); form.append('access_token', pageToken); form.append('source', fs.createReadStream(filePath));
-    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/videos`, form, { headers: form.getHeaders() });
-    return res.data.id;
+    await axios.post(`https://graph.facebook.com/v18.0/${pageId}/videos`, form, { headers: form.getHeaders() });
 }
 async function dangAnhAnFacebook(filePath, pageId, pageToken) {
     const form = new FormData(); form.append('published', 'false'); form.append('access_token', pageToken); form.append('source', fs.createReadStream(filePath));
-    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() }); 
-    return res.data.id;
+    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() }); return res.data.id;
 }
 async function dangNhieuAnhFacebook(message, mediaIds, pageId, pageToken) {
     const params = { message, access_token: pageToken };
     mediaIds.forEach((id, index) => { params[`attached_media[${index}]`] = JSON.stringify({ media_fbid: id }); });
-    const res = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params });
-    return res.data.id;
+    await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params });
 }
 
 kiemTraVaDangBai();
