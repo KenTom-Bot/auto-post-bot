@@ -1,3 +1,4 @@
+# Kich hoat cron
 name: Bot Tu Dong Dang Bai
 on:
   schedule:
