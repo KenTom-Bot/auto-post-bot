@@ -2,8 +2,10 @@
 name: Bot Tu Dong Dang Bai
 on:
   schedule:
-    - cron: '*/15 * * * *' # Chạy mỗi 15 phút
-  workflow_dispatch: # Cho phép bấm nút thủ công
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [run-bot-trigger]
 
 jobs:
   run-bot:
