@@ -1,8 +1,8 @@
 name: Bot Tu Dong Dang Bai
 on:
   schedule:
-    - cron: '*/30 * * * *' # Lệnh chạy tự động mỗi 30 phút. 
-  workflow_dispatch: # Hiển thị nút bấm để bạn có thể test thủ công bất cứ lúc nào
+    - cron: '*/15 * * * *' # Chạy mỗi 15 phút
+  workflow_dispatch: # Cho phép bấm nút thủ công
 
 jobs:
   run-bot:
