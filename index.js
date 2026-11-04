@@ -26,11 +26,11 @@ const ACCOUNTS = {
         clientSecret: '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', 
         refreshToken: '1//04sAqFrzPe8WUCgYIARAAGAQSNwF-L9IrfmzZWCamCa6aNT3QAW-gvfCUrPohxEpobCnwBf9qBtqOQI_jozQeiZCbKLHKlLKLDpo' 
     },
-    'YT - Kênh Chính': { 
+    'YT - Góc Mẹ Và Bé': { 
         type: 'YOUTUBE', 
-        clientId: 'ĐIỀN_CLIENT_ID', 
-        clientSecret: 'ĐIỀN_CLIENT_SECRET', 
-        refreshToken: 'ĐIỀN_REFRESH_TOKEN' 
+        clientId: '5800787278-1kvg105bh2g15vred661h93imrh4kiuq.apps.googleusercontent.com', 
+        clientSecret: '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', 
+        refreshToken: '1//04eFcdGCwRUsSCgYIARAAGAQSNwF-L9Ir5wLTJggMPC5p6wc2BeVkn7MgIhEeljo-09bQj8Uawy_-HKncJxnQ84eabtESE2ZPVEk' 
     }
 };
 
