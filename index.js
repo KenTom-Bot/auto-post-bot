@@ -18,7 +18,7 @@ const ACCOUNTS = {
     'FB - Thế Giới Trẻ Thơ': { 
         type: 'FACEBOOK', 
         id: '108894505424425', 
-        token: 'EAAQygEX3PaQBSZBeeDjHymx7Ju37LPLslzzWbLhnJueL2MXr1ZAl33TAHZBMgEYdmLErTHraZCFcZCJYtZApCXtJGk0EflgpDiCPqapaqgsDdfCNOzDodpLVddm88xqKK8yEfXPkAZCsxR04TBjt9acDDX5K5s27Rrn1K4CHno1ZAf17QewDiJqKdSZAvMyIUR85ykDTSkYmyyNjZAFQekQ4IdJIswplHudmaEZA4HVO1HdlBH2KLtnEkfFFdXF8NEZD' 
+        token: 'EAAQygEX3PaQBS5fcZAs4CdVj0fgtH9GRD2ZArVVIDn4h34fe8rOxbxyP2EBJaiAattnBhFhCQEkAgAXV0py4RvADhTZBghcRWMwygjCAWYsRhrckZBExyKCF4dbFZBzRPLsmmRwaZAk3vupl69kk92ie9BZABLg8RrSk6Mz5bLEcZCFD4L5hY3GT5cuNMNZCZCU0iQZC8uNbMuFlR09KnfGhzOqZAAEZD' 
     },
     'YT - Cafe Số': { 
         type: 'YOUTUBE', 
