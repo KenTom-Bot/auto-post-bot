@@ -28,8 +28,8 @@ const ACCOUNTS = {
     },
     'YT - Góc Mẹ Và Bé': { 
         type: 'YOUTUBE', 
-        clientId: '5800787278-1kvg105bh2g15vred661h93imrh4kiuq.apps.googleusercontent.com', 
-        clientSecret: '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', 
+        clientId: '5800787278-580l9hv899l89gh2o9obu2va549oaiq3.apps.googleusercontent.com', 
+        clientSecret: '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', 
         refreshToken: '1//043W2VZ27J36zCgYIARAAGAQSNwF-L9IrrtYljiB_YhuFFpmqHPM5gjhrIEBovVFSmOkEiZWs3Ex-IWPdpadFT8SCKXTvzvJCn_A' 
     }
 };
