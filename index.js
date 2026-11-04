@@ -5,18 +5,39 @@ const FormData = require('form-data');
 const path = require('path');
 
 // ================= CẤU HÌNH CƠ BẢN =================
-const SPREADSHEET_ID = '1wr6WHUF3i8U0b-BVv0AVw5JjfT9ojOwtzqf41tVdjrw';
-const FB_PAGE_ID = '510347025492019'; 
-const FB_PAGE_TOKEN = 'EAAQygEX3PaQBS93jZBW1vZB12TG79fQBcap3UkXZBPUqaDbFyDZBPl9ekhPyIzlpsIZC9gt7BFkGJz6rtK31s4vPdpGogOUiseKEWSGY7iKKAPPSEhDEynYMNQ3ZA3jHERv5E2ZBVDDZCy3SYgKx3NZBV1ZCZAm2x3aCAqQlgdqRegFmGU7GBBlrs0ZCzQQZCyfYFG8vLxj39PDVgJ6FlixcZBS3LXbTcD1SZCz0Ox3Wggz0dyx5tXbSpTYbvagkmTD';
+const SPREADSHEET_ID = 'ĐIỀN_ID_BẢNG_TÍNH_VÀO_ĐÂY';
 const SHEET_NAME = 'Trang tính1'; 
+
+// TỪ ĐIỂN FANPAGE: Bạn có thể thêm bao nhiêu Page tùy ý
+const FB_ACCOUNTS = {
+    'FB - Cafe Số': {
+        id: 'ĐIỀN_ID_PAGE_CAFE_SO',
+        token: 'ĐIỀN_TOKEN_PAGE_CAFE_SO'
+    },
+    'FB - Shop Giày': {
+        id: 'ĐIỀN_ID_PAGE_THU_2',
+        token: 'ĐIỀN_TOKEN_PAGE_THU_2'
+    }
+    // Thêm các page khác theo cú pháp tương tự...
+};
 
 const auth = new google.auth.GoogleAuth({
     keyFile: 'credentials.json',
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
+// Hàm ép kiểu giờ trên Sheets (DD/MM/YYYY HH:mm) chuẩn theo múi giờ Việt Nam (+7)
+function parseDateStringVN(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.trim().split(' ');
+    if (parts.length !== 2) return null;
+    const [day, month, year] = parts[0].split('/');
+    const time = parts[1];
+    return new Date(`${year}-${month}-${day}T${time}:00+07:00`);
+}
+
 async function kiemTraVaDangBai() {
-    console.log('🔄 Đang kiểm tra lịch đăng từ Google Sheets...');
+    console.log('🔄 Đang kiểm tra lịch đăng...');
     const client = await auth.getClient();
     const sheets = google.sheets({ version: 'v4', auth: client });
 
@@ -29,82 +50,92 @@ async function kiemTraVaDangBai() {
         const rows = response.data.values;
         if (!rows || rows.length === 0) return console.log('Không có dữ liệu.');
 
+        const now = new Date(); 
+        console.log(`⏰ Giờ hệ thống hiện tại: ${now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`);
+
         for (let i = 0; i < rows.length; i++) {
-            const [thoiGian, loaiBai, nenTang, tieuDe, noiDung, linkDrive, linkAffiliate, trangThai] = rows[i];
+            const [thoiGian, loaiBai, nenTang, tieuDe, noiDung, linkDrive, linkAffiliate, trangThai] = rows[i] || [];
 
             if (!trangThai || !trangThai.includes('Đã đăng')) {
+                
+                // 1. KIỂM TRA HẸN GIỜ
+                const scheduledTime = parseDateStringVN(thoiGian);
+                if (!scheduledTime) {
+                    console.log(`⚠️ Hàng ${i + 2}: Lỗi định dạng thời gian (Cần dạng DD/MM/YYYY HH:mm)`);
+                    continue;
+                }
+                if (now < scheduledTime) {
+                    console.log(`⏳ Hàng ${i + 2}: Chưa đến giờ đăng (${thoiGian}). Đang bỏ qua...`);
+                    continue; // Bỏ qua, chờ chu kỳ Github 30 phút sau quét lại
+                }
+
+                // 2. NẾU ĐÃ ĐẾN GIỜ -> TIẾN HÀNH ĐĂNG
                 let finalCaption = noiDung || '';
                 if (linkAffiliate) finalCaption += `\n\n👉 Mua ngay tại đây: ${linkAffiliate}`;
 
-                if (nenTang && nenTang.includes('FB - Cafe Số')) {
+                if (nenTang && nenTang.startsWith('FB - ')) {
+                    const fbConfig = FB_ACCOUNTS[nenTang.trim()];
+                    if (!fbConfig) {
+                        console.log(`❌ Hàng ${i + 2}: Chưa cấu hình ID và Token cho ${nenTang} trong code.`);
+                        continue;
+                    }
+                    const { id: pageId, token: pageToken } = fbConfig;
+
                     try {
                         if (loaiBai === 'Text') {
-                            console.log(`-> Đang đăng Text...`);
-                            await dangBaiTextFacebook(finalCaption);
+                            console.log(`-> Đang đăng Text lên ${nenTang}...`);
+                            await dangBaiTextFacebook(finalCaption, pageId, pageToken);
                         } 
                         else if (loaiBai === 'Image' || loaiBai === 'Video') {
-                            // Tách các link bằng dấu phẩy và loại bỏ khoảng trắng
                             const arrLinks = linkDrive ? linkDrive.split(',').map(l => l.trim()).filter(l => l) : [];
                             if (arrLinks.length === 0) throw new Error('Không có link Drive nào');
 
                             if (loaiBai === 'Video' || arrLinks.length === 1) {
-                                // Luồng cũ: Đăng 1 video hoặc 1 ảnh
                                 const ext = loaiBai === 'Image' ? '.jpg' : '.mp4';
                                 const tempFilePath = path.join(__dirname, `temp_${Date.now()}${ext}`);
                                 
-                                console.log(`-> Đang tải 1 ${loaiBai} từ Google Drive...`);
                                 await downloadFileDrive(arrLinks[0], tempFilePath);
-                                
-                                console.log(`-> Đang đẩy ${loaiBai} lên Facebook...`);
                                 if (loaiBai === 'Image') {
-                                    await dangBaiImageFacebook(finalCaption, tempFilePath);
+                                    await dangBaiImageFacebook(finalCaption, tempFilePath, pageId, pageToken);
                                 } else {
-                                    await dangBaiVideoFacebook(finalCaption, tempFilePath);
+                                    await dangBaiVideoFacebook(finalCaption, tempFilePath, pageId, pageToken);
                                 }
-                                fs.unlinkSync(tempFilePath); // Xóa file tạm
+                                fs.unlinkSync(tempFilePath); 
                             } 
                             else if (loaiBai === 'Image' && arrLinks.length > 1) {
-                                // Luồng mới: Đăng nhiều ảnh
-                                console.log(`-> Phát hiện ${arrLinks.length} ảnh. Đang xử lý tải xuống...`);
                                 const mediaIds = [];
                                 const downloadedFiles = [];
 
-                                // Tải và up ẩn từng ảnh
                                 for (let j = 0; j < arrLinks.length; j++) {
                                     const tempFilePath = path.join(__dirname, `temp_multi_${Date.now()}_${j}.jpg`);
                                     await downloadFileDrive(arrLinks[j], tempFilePath);
                                     downloadedFiles.push(tempFilePath);
                                     
-                                    console.log(`-> Tải lên ảnh ${j+1}/${arrLinks.length} (chế độ ẩn) lên FB...`);
-                                    const photoId = await dangAnhAnFacebook(tempFilePath);
+                                    const photoId = await dangAnhAnFacebook(tempFilePath, pageId, pageToken);
                                     mediaIds.push(photoId);
                                 }
-
-                                // Gộp các ID ảnh và đăng bài
-                                console.log(`-> Đang xuất bản bài viết chứa ${mediaIds.length} ảnh...`);
-                                await dangNhieuAnhFacebook(finalCaption, mediaIds);
-
-                                // Dọn dẹp tất cả file tạm
+                                await dangNhieuAnhFacebook(finalCaption, mediaIds, pageId, pageToken);
                                 downloadedFiles.forEach(file => fs.unlinkSync(file));
                             }
                         }
 
+                        // Ghi chú "Đã đăng" vào Google Sheets
                         await sheets.spreadsheets.values.update({
                             spreadsheetId: SPREADSHEET_ID,
                             range: `${SHEET_NAME}!H${i + 2}`,
                             valueInputOption: 'USER_ENTERED',
                             resource: { values: [['Đã đăng']] },
                         });
-                        console.log(`✅ Hoàn tất hàng ${i + 2}`);
+                        console.log(`✅ Hoàn tất đăng hàng ${i + 2} lên ${nenTang}`);
                         
                     } catch (err) {
-                        console.error(`❌ Lỗi ở hàng ${i + 2}:`, err.message);
+                        console.error(`❌ Lỗi hàng ${i + 2} (${nenTang}):`, err.message);
                     }
                 }
             }
         }
     } catch (error) {
-        console.error('❌ Lỗi Google Sheets:', error.message);
+        console.error('❌ Lỗi hệ thống:', error.message);
     }
 }
 
@@ -123,54 +154,46 @@ async function downloadFileDrive(driveLink, destPath) {
     });
 }
 
-async function dangBaiTextFacebook(message) {
-    const response = await axios.post(`https://graph.facebook.com/v18.0/${FB_PAGE_ID}/feed`, null, {
-        params: { message: message, access_token: FB_PAGE_TOKEN }
+async function dangBaiTextFacebook(message, pageId, pageToken) {
+    const response = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, {
+        params: { message: message, access_token: pageToken }
     });
     return response.data.id;
 }
 
-async function dangBaiImageFacebook(message, filePath) {
+async function dangBaiImageFacebook(message, filePath, pageId, pageToken) {
     const form = new FormData();
     form.append('message', message);
-    form.append('access_token', FB_PAGE_TOKEN);
+    form.append('access_token', pageToken);
     form.append('source', fs.createReadStream(filePath));
-    const response = await axios.post(`https://graph.facebook.com/v18.0/${FB_PAGE_ID}/photos`, form, {
-        headers: form.getHeaders()
-    });
+    const response = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() });
     return response.data.id;
 }
 
-async function dangBaiVideoFacebook(message, filePath) {
+async function dangBaiVideoFacebook(message, filePath, pageId, pageToken) {
     const form = new FormData();
     form.append('description', message);
-    form.append('access_token', FB_PAGE_TOKEN);
+    form.append('access_token', pageToken);
     form.append('source', fs.createReadStream(filePath));
-    const response = await axios.post(`https://graph.facebook.com/v18.0/${FB_PAGE_ID}/videos`, form, {
-        headers: form.getHeaders()
-    });
+    const response = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/videos`, form, { headers: form.getHeaders() });
     return response.data.id;
 }
 
-// --- HÀM MỚI CHO TÍNH NĂNG NHIỀU ẢNH ---
-
-async function dangAnhAnFacebook(filePath) {
+async function dangAnhAnFacebook(filePath, pageId, pageToken) {
     const form = new FormData();
-    form.append('published', 'false'); // Bắt buộc false để ảnh không bị đẩy thẳng lên tường
-    form.append('access_token', FB_PAGE_TOKEN);
+    form.append('published', 'false'); 
+    form.append('access_token', pageToken);
     form.append('source', fs.createReadStream(filePath));
-    const response = await axios.post(`https://graph.facebook.com/v18.0/${FB_PAGE_ID}/photos`, form, {
-        headers: form.getHeaders()
-    });
+    const response = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/photos`, form, { headers: form.getHeaders() });
     return response.data.id;
 }
 
-async function dangNhieuAnhFacebook(message, mediaIds) {
-    const params = { message: message, access_token: FB_PAGE_TOKEN };
+async function dangNhieuAnhFacebook(message, mediaIds, pageId, pageToken) {
+    const params = { message: message, access_token: pageToken };
     mediaIds.forEach((id, index) => {
         params[`attached_media[${index}]`] = JSON.stringify({ media_fbid: id });
     });
-    const response = await axios.post(`https://graph.facebook.com/v18.0/${FB_PAGE_ID}/feed`, null, { params: params });
+    const response = await axios.post(`https://graph.facebook.com/v18.0/${pageId}/feed`, null, { params: params });
     return response.data.id;
 }
 
