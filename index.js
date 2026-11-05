@@ -20,6 +20,11 @@ const ACCOUNTS = {
         id: '108894505424425', 
         token: 'EAAQygEX3PaQBS6AZBJEH8SPvyqjirG6f63FSdCHPCgDim5mFRXDh7QbNjDdbHN15CDGjOcARBkpEM8nm4BpzW5FJZAZCl27CTmeRBDnzh8tKgfMvXyVADwZAaBZAlzERy8b1nb3GIfLaQSjSHhCifKHFZAqbmvZAtdaGxjnYHVNxCtN1Ym3wwduslz6RACKeHXvnha4FZBFgaLRfJ34LOSFCpZBUZD' 
     },
+    'FB - Tiện ích hàng ngày': { 
+        type: 'FACEBOOK', 
+        id: '109253124911604', 
+        token: 'EAAQygEX3PaQBSxdBqZBEhkHkUW7N6Pxcsf0ZBopWuX94LMPBbI86m9O9bwDhNdDMyiUyrcFnmIMaLZCIhzVU2zsX1isYgCboExI8yfnxnZBixdvfnwmyofQSk901Ndkf5GBeQAVVTKJebF5KohncTlGA1G53ZBmrHb2jpU1O56neh8Vm8eXroXgTztV8V4HrDZBFJefHc7OAj1NwbzxFxZBe2sZD' 
+    },
     'YT - Cafe Số': { 
         type: 'YOUTUBE', 
         clientId: '5800787278-1kvg105bh2g15vred661h93imrh4kiuq.apps.googleusercontent.com', 
